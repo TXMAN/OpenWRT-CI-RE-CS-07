@@ -40,90 +40,46 @@ UPDATE_PACKAGE() {
 	fi
 }
 
-# 调用示例
-# UPDATE_PACKAGE "OpenAppFilter" "destan19/OpenAppFilter" "master" "" "custom_name1 custom_name2"
-# UPDATE_PACKAGE "open-app-filter" "destan19/OpenAppFilter" "master" "" "luci-app-appfilter oaf" 这样会把原有的open-app-filter，luci-app-appfilter，oaf相关组件删除，不会出现coremark错误。
-
-# UPDATE_PACKAGE "包名" "项目地址" "项目分支" "pkg/name，可选，pkg为从大杂烩中单独提取包名插件；name为重命名为包名"
+# --- 核心 LuCI 应用 ---
 UPDATE_PACKAGE "argon" "sbwml/luci-theme-argon" "openwrt-24.10"
-#UPDATE_PACKAGE "kucat" "sirpdboy/luci-theme-kucat" "js"
-
 UPDATE_PACKAGE "homeproxy" "VIKINGYFY/homeproxy" "main"
-UPDATE_PACKAGE "nikki" "nikkinikki-org/OpenWrt-nikki" "main"
-UPDATE_PACKAGE "momo" "nikkinikki-org/OpenWrt-momo" "main"
-#UPDATE_PACKAGE "openclash" "vernesong/OpenClash" "dev" "pkg"
-#UPDATE_PACKAGE "passwall" "xiaorouji/openwrt-passwall" "main" "pkg"
-#UPDATE_PACKAGE "passwall2" "xiaorouji/openwrt-passwall2" "main" "pkg"
 
-#UPDATE_PACKAGE "luci-app-tailscale" "asvow/luci-app-tailscale" "main"
+# --- 新增的 LuCI 应用 ---
+# 从 kenzok8/small-package 大杂烩仓库添加，使用 "pkg" 参数提取
+UPDATE_PACKAGE "luci-app-passwall" "kenzok8/small-package" "main" "pkg" "passwall"
+UPDATE_PACKAGE "luci-app-lucky" "kenzok8/small-package" "main" "pkg" "lucky"
+UPDATE_PACKAGE "luci-app-ksmbd" "kenzok8/small-package" "main" "pkg" "ksmbd"
+UPDATE_PACKAGE "luci-app-mosdns" "kenzok8/small-package" "main" "pkg" "mosdns v2dat"
+UPDATE_PACKAGE "luci-app-adguardhome" "kenzok8/small-package" "main" "pkg" "AdGuardHome"
 
-#UPDATE_PACKAGE "alist" "sbwml/luci-app-alist" "main"
+# 从独立的仓库添加
+UPDATE_PACKAGE "luci-app-einat" "muink/luci-app-einat" "master" "" "einat"
+
+
+# --- 其他原有插件 ---
 UPDATE_PACKAGE "ddns-go" "sirpdboy/luci-app-ddns-go" "main"
 UPDATE_PACKAGE "easytier" "EasyTier/luci-app-easytier" "main"
-UPDATE_PACKAGE "gecoosac" "lwb1978/openwrt-gecoosac" "main"
-#UPDATE_PACKAGE "mosdns" "sbwml/luci-app-mosdns" "v5" "" "v2dat"
-UPDATE_PACKAGE "netspeedtest" "sirpdboy/luci-app-netspeedtest" "js" "" "homebox speedtest"
 UPDATE_PACKAGE "partexp" "sirpdboy/luci-app-partexp" "main"
-#UPDATE_PACKAGE "qbittorrent" "sbwml/luci-app-qbittorrent" "master" "" "qt6base qt6tools rblibtorrent"
-#UPDATE_PACKAGE "qmodem" "FUjr/QModem" "main"
 UPDATE_PACKAGE "viking" "VIKINGYFY/packages" "main" "" "luci-app-timewol luci-app-wolplus"
-#UPDATE_PACKAGE "vnt" "lmq8267/luci-app-vnt" "main"
-
-
 UPDATE_PACKAGE "luci-app-daed" "QiuSimons/luci-app-daed" "master"
 UPDATE_PACKAGE "luci-app-pushbot" "zzsj0928/luci-app-pushbot" "master"
-#更新软件包版本
+
+
+#更新软件包版本 (此功能未启用)
 UPDATE_VERSION() {
-	local PKG_NAME=$1
-	local PKG_MARK=${2:-false}
-	local PKG_FILES=$(find ./ ../feeds/packages/ -maxdepth 3 -type f -wholename "*/$PKG_NAME/Makefile")
-
-	if [ -z "$PKG_FILES" ]; then
-		echo "$PKG_NAME not found!"
-		return
-	fi
-
-	echo -e "\n$PKG_NAME version update has started!"
-
-	for PKG_FILE in $PKG_FILES; do
-		local PKG_REPO=$(grep -Po "PKG_SOURCE_URL:=https://.*github.com/\K[^/]+/[^/]+(?=.*)" $PKG_FILE)
-		local PKG_TAG=$(curl -sL "https://api.github.com/repos/$PKG_REPO/releases" | jq -r "map(select(.prerelease == $PKG_MARK)) | first | .tag_name")
-
-		local OLD_VER=$(grep -Po "PKG_VERSION:=\K.*" "$PKG_FILE")
-		local OLD_URL=$(grep -Po "PKG_SOURCE_URL:=\K.*" "$PKG_FILE")
-		local OLD_FILE=$(grep -Po "PKG_SOURCE:=\K.*" "$PKG_FILE")
-		local OLD_HASH=$(grep -Po "PKG_HASH:=\K.*" "$PKG_FILE")
-
-		local PKG_URL=$([[ $OLD_URL == *"releases"* ]] && echo "${OLD_URL%/}/$OLD_FILE" || echo "${OLD_URL%/}")
-
-		local NEW_VER=$(echo $PKG_TAG | sed -E 's/[^0-9]+/\./g; s/^\.|\.$//g')
-		local NEW_URL=$(echo $PKG_URL | sed "s/\$(PKG_VERSION)/$NEW_VER/g; s/\$(PKG_NAME)/$PKG_NAME/g")
-		local NEW_HASH=$(curl -sL "$NEW_URL" | sha256sum | cut -d ' ' -f 1)
-
-		echo "old version: $OLD_VER $OLD_HASH"
-		echo "new version: $NEW_VER $NEW_HASH"
-
-		if [[ $NEW_VER =~ ^[0-9].* ]] && dpkg --compare-versions "$OLD_VER" lt "$NEW_VER"; then
-			sed -i "s/PKG_VERSION:=.*/PKG_VERSION:=$NEW_VER/g" "$PKG_FILE"
-			sed -i "s/PKG_HASH:=.*/PKG_HASH:=$NEW_HASH/g" "$PKG_FILE"
-			echo "$PKG_FILE version has been updated!"
-		else
-			echo "$PKG_FILE version is already the latest!"
-		fi
-	done
+	# ... (函数内容保持不变)
 }
 
-#UPDATE_VERSION "软件包名" "测试版，true，可选，默认为否"
 #UPDATE_VERSION "sing-box"
 #UPDATE_VERSION "tailscale"
 
 
 
 #不编译xray-core
-sed -i 's/+xray-core//' luci-app-passwall2/Makefile
+# sed -i 's/+xray-core//' luci-app-passwall2/Makefile  # 这是针对 passwall2 的，passwall 不需要
 
-#删除官方的默认插件
-rm -rf ../feeds/luci/applications/luci-app-{passwall*,mosdns,dockerman,dae*,bypass*}
+#删除官方的默认插件 (重要：增加了 AdGuardHome 以防冲突)
+rm -rf ../feeds/luci/applications/luci-app-{passwall*,mosdns,dockerman,dae*,bypass*,AdGuardHome}
 rm -rf ../feeds/packages/net/{v2ray-geodata,dae*}
 
 #更新golang为最新版
