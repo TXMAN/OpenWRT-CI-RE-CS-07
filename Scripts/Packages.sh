@@ -57,16 +57,20 @@ UPDATE_PACKAGE "viking" "VIKINGYFY/packages" "main" "" "luci-app-timewol luci-ap
 UPDATE_PACKAGE "luci-app-daed" "QiuSimons/luci-app-daed" "master"
 UPDATE_PACKAGE "luci-app-pushbot" "zzsj0928/luci-app-pushbot" "master"
 
-# --- 【新增】根据 GENERAL.txt 添加的插件 ---
-# 从 kenzok8/small-package 仓库添加
-UPDATE_PACKAGE "luci-app-passwall" "kenzok8/small-package" "main" "pkg" "passwall"
-UPDATE_PACKAGE "luci-app-lucky" "kenzok8/small-package" "main" "pkg" "lucky"
-UPDATE_PACKAGE "luci-app-ksmbd" "kenzok8/small-package" "main" "pkg" "ksmbd"
-UPDATE_PACKAGE "luci-app-mosdns" "kenzok8/small-package" "main" "pkg" "mosdns v2dat"
-UPDATE_PACKAGE "luci-app-adguardhome" "kenzok8/small-package" "main" "pkg" "AdGuardHome"
+# --- 【新增】LuCI 应用 (前端界面) ---
+UPDATE_PACKAGE "luci-app-passwall" "kenzok8/small-package" "main" "pkg"
+UPDATE_PACKAGE "luci-app-lucky" "kenzok8/small-package" "main" "pkg"
+UPDATE_PACKAGE "luci-app-ksmbd" "kenzok8/small-package" "main" "pkg"
+UPDATE_PACKAGE "luci-app-mosdns" "kenzok8/small-package" "main" "pkg"
+UPDATE_PACKAGE "luci-app-adguardhome" "kenzok8/small-package" "main" "pkg"
+UPDATE_PACKAGE "luci-app-einat" "muink/luci-app-einat" "master"
 
-# 从 muink/luci-app-einat 仓库添加
-UPDATE_PACKAGE "luci-app-einat" "muink/luci-app-einat" "master" "" "einat"
+# --- 【新增】LuCI 应用所需的核心程序 (后端引擎) ---
+UPDATE_PACKAGE "adguardhome" "kenzok8/small-package" "main" "pkg"
+UPDATE_PACKAGE "lucky" "kenzok8/small-package" "main" "pkg"
+UPDATE_PACKAGE "mosdns" "kenzok8/small-package" "main" "pkg"
+UPDATE_PACKAGE "v2dat" "kenzok8/small-package" "main" "pkg"
+UPDATE_PACKAGE "einat-ebpf" "muink/openwrt-einat-ebpf" "main"
 
 
 #更新软件包版本
@@ -95,7 +99,7 @@ UPDATE_VERSION() {
 
 		local NEW_VER=$(echo $PKG_TAG | sed -E 's/[^0-9]+/\./g; s/^\.|\.$//g')
 		local NEW_URL=$(echo $PKG_URL | sed "s/\$(PKG_VERSION)/$NEW_VER/g; s/\$(PKG_NAME)/$PKG_NAME/g")
-		local NEW_HASH=$(curl -sL "$NEW_URL" | sha256sum | cut -d ' ' ' ' -f 1)
+		local NEW_HASH=$(curl -sL "$NEW_URL" | sha256sum | cut -d ' ' -f 1)
 
 		echo "old version: $OLD_VER $OLD_HASH"
 		echo "new version: $NEW_VER $NEW_HASH"
@@ -131,13 +135,4 @@ git clone -b 24.x https://github.com/sbwml/packages_lang_golang ../feeds/package
 cp -r $GITHUB_WORKSPACE/package/* ./
 
 #coremark修复
-sed -i 's/mkdir \$(PKG_BUILD_DIR)\/\$(ARCH)/mkdir -p \$(PKG_BUILD_DIR)\/\$(ARCH)/g' ../feeds/packages/utils/coremark/Makefile
-
-#修改字体
-argon_css_file=$(find ./luci-theme-argon/ -type f -name "cascade.css")
-sed -i "/^.main .main-left .nav li a {/,/^}/ { /font-weight: bolder/d }" $argon_css_file
-sed -i '/^\[data-page="admin-system-opkg"\] #maincontent>.container {/,/}/ s/font-weight: 600;/font-weight: normal;/' $argon_css_file
-
-#修复daed/Makefile
-rm -rf luci-app-daed/daed/Makefile && cp -r $GITHUB_WORKSPACE/patches/daed/Makefile luci-app-daed/daed/
-cat luci-app-daed/daed/Makefile
+sed -i 's/mkdir \$(PKG_BUILD_DIR)\/\$(ARCH)/mk
