@@ -40,45 +40,86 @@ UPDATE_PACKAGE() {
 	fi
 }
 
-# --- 核心 LuCI 应用 ---
+# --- 基础和主题 ---
 UPDATE_PACKAGE "argon" "sbwml/luci-theme-argon" "openwrt-24.10"
-UPDATE_PACKAGE "homeproxy" "VIKINGYFY/homeproxy" "main"
+#UPDATE_PACKAGE "kucat" "sirpdboy/luci-theme-kucat" "js"
 
-# --- 新增的 LuCI 应用 ---
-# 从 kenzok8/small-package 大杂烩仓库添加，使用 "pkg" 参数提取
+# --- 原有插件 ---
+UPDATE_PACKAGE "homeproxy" "VIKINGYFY/homeproxy" "main"
+UPDATE_PACKAGE "nikki" "nikkinikki-org/OpenWrt-nikki" "main"
+UPDATE_PACKAGE "momo" "nikkinikki-org/OpenWrt-momo" "main"
+UPDATE_PACKAGE "ddns-go" "sirpdboy/luci-app-ddns-go" "main"
+UPDATE_PACKAGE "easytier" "EasyTier/luci-app-easytier" "main"
+UPDATE_PACKAGE "gecoosac" "lwb1978/openwrt-gecoosac" "main"
+UPDATE_PACKAGE "netspeedtest" "sirpdboy/luci-app-netspeedtest" "js" "" "homebox speedtest"
+UPDATE_PACKAGE "partexp" "sirpdboy/luci-app-partexp" "main"
+UPDATE_PACKAGE "viking" "VIKINGYFY/packages" "main" "" "luci-app-timewol luci-app-wolplus"
+UPDATE_PACKAGE "luci-app-daed" "QiuSimons/luci-app-daed" "master"
+UPDATE_PACKAGE "luci-app-pushbot" "zzsj0928/luci-app-pushbot" "master"
+
+# --- 【新增】根据 GENERAL.txt 添加的插件 ---
+# 从 kenzok8/small-package 仓库添加
 UPDATE_PACKAGE "luci-app-passwall" "kenzok8/small-package" "main" "pkg" "passwall"
 UPDATE_PACKAGE "luci-app-lucky" "kenzok8/small-package" "main" "pkg" "lucky"
 UPDATE_PACKAGE "luci-app-ksmbd" "kenzok8/small-package" "main" "pkg" "ksmbd"
 UPDATE_PACKAGE "luci-app-mosdns" "kenzok8/small-package" "main" "pkg" "mosdns v2dat"
 UPDATE_PACKAGE "luci-app-adguardhome" "kenzok8/small-package" "main" "pkg" "AdGuardHome"
 
-# 从独立的仓库添加
+# 从 muink/luci-app-einat 仓库添加
 UPDATE_PACKAGE "luci-app-einat" "muink/luci-app-einat" "master" "" "einat"
 
 
-# --- 其他原有插件 ---
-UPDATE_PACKAGE "ddns-go" "sirpdboy/luci-app-ddns-go" "main"
-UPDATE_PACKAGE "easytier" "EasyTier/luci-app-easytier" "main"
-UPDATE_PACKAGE "partexp" "sirpdboy/luci-app-partexp" "main"
-UPDATE_PACKAGE "viking" "VIKINGYFY/packages" "main" "" "luci-app-timewol luci-app-wolplus"
-UPDATE_PACKAGE "luci-app-daed" "QiuSimons/luci-app-daed" "master"
-UPDATE_PACKAGE "luci-app-pushbot" "zzsj0928/luci-app-pushbot" "master"
-
-
-#更新软件包版本 (此功能未启用)
+#更新软件包版本
 UPDATE_VERSION() {
-	# ... (函数内容保持不变)
+	local PKG_NAME=$1
+	local PKG_MARK=${2:-false}
+	local PKG_FILES=$(find ./ ../feeds/packages/ -maxdepth 3 -type f -wholename "*/$PKG_NAME/Makefile")
+
+	if [ -z "$PKG_FILES" ]; then
+		echo "$PKG_NAME not found!"
+		return
+	fi
+
+	echo -e "\n$PKG_NAME version update has started!"
+
+	for PKG_FILE in $PKG_FILES; do
+		local PKG_REPO=$(grep -Po "PKG_SOURCE_URL:=https://.*github.com/\K[^/]+/[^/]+(?=.*)" $PKG_FILE)
+		local PKG_TAG=$(curl -sL "https://api.github.com/repos/$PKG_REPO/releases" | jq -r "map(select(.prerelease == $PKG_MARK)) | first | .tag_name")
+
+		local OLD_VER=$(grep -Po "PKG_VERSION:=\K.*" "$PKG_FILE")
+		local OLD_URL=$(grep -Po "PKG_SOURCE_URL:=\K.*" "$PKG_FILE")
+		local OLD_FILE=$(grep -Po "PKG_SOURCE:=\K.*" "$PKG_FILE")
+		local OLD_HASH=$(grep -Po "PKG_HASH:=\K.*" "$PKG_FILE")
+
+		local PKG_URL=$([[ $OLD_URL == *"releases"* ]] && echo "${OLD_URL%/}/$OLD_FILE" || echo "${OLD_URL%/}")
+
+		local NEW_VER=$(echo $PKG_TAG | sed -E 's/[^0-9]+/\./g; s/^\.|\.$//g')
+		local NEW_URL=$(echo $PKG_URL | sed "s/\$(PKG_VERSION)/$NEW_VER/g; s/\$(PKG_NAME)/$PKG_NAME/g")
+		local NEW_HASH=$(curl -sL "$NEW_URL" | sha256sum | cut -d ' ' ' ' -f 1)
+
+		echo "old version: $OLD_VER $OLD_HASH"
+		echo "new version: $NEW_VER $NEW_HASH"
+
+		if [[ $NEW_VER =~ ^[0-9].* ]] && dpkg --compare-versions "$OLD_VER" lt "$NEW_VER"; then
+			sed -i "s/PKG_VERSION:=.*/PKG_VERSION:=$NEW_VER/g" "$PKG_FILE"
+			sed -i "s/PKG_HASH:=.*/PKG_HASH:=$NEW_HASH/g" "$PKG_FILE"
+			echo "$PKG_FILE version has been updated!"
+		else
+			echo "$PKG_FILE version is already the latest!"
+		fi
+	done
 }
 
+#UPDATE_VERSION "软件包名" "测试版，true，可选，默认为否"
 #UPDATE_VERSION "sing-box"
 #UPDATE_VERSION "tailscale"
 
 
 
 #不编译xray-core
-# sed -i 's/+xray-core//' luci-app-passwall2/Makefile  # 这是针对 passwall2 的，passwall 不需要
+# sed -i 's/+xray-core//' luci-app-passwall2/Makefile
 
-#删除官方的默认插件 (重要：增加了 AdGuardHome 以防冲突)
+#删除官方的默认插件 (已增加 AdGuardHome 防止冲突)
 rm -rf ../feeds/luci/applications/luci-app-{passwall*,mosdns,dockerman,dae*,bypass*,AdGuardHome}
 rm -rf ../feeds/packages/net/{v2ray-geodata,dae*}
 
