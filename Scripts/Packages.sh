@@ -88,7 +88,7 @@ UPDATE_PACKAGE "adguardhome" "kenzok8/small-package" "main" "pkg"
 UPDATE_PACKAGE "lucky" "kenzok8/small-package" "main" "pkg"
 UPDATE_PACKAGE "mosdns" "kenzok8/small-package" "main" "pkg"
 UPDATE_PACKAGE "v2dat" "kenzok8/small-package" "main" "pkg"
-UPDATE_PACKAGE "einat-ebpf" "muink/openwrt-einat-ebpf" "main"
+UPDATE_PACKAGE "einat-ebpf" "muink/openwrt-einat-ebpf" "master"
 
 #更新软件包版本
 UPDATE_VERSION() {
